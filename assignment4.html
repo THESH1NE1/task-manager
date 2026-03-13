@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Management App</title>
+    <style>
+        /* === CSS Variables for Theme Toggling === */
+        :root {
+            --bg-color: #f4f7f6;
+            --text-color: #333;
+            --header-bg: #2c3e50;
+            --header-text: #fff;
+            --card-bg: #fff;
+            --border-color: #ddd;
+            --primary-color: #3498db;
+            --primary-hover: #2980b9;
+            --danger-color: #e74c3c;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+            --completed-bg: #e8f8f5;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #1a1a2e;
+            --text-color: #e6e6e6;
+            --header-bg: #16213e;
+            --header-text: #e6e6e6;
+            --card-bg: #0f3460;
+            --border-color: #2a3b5c;
+            --primary-color: #e94560;
+            --primary-hover: #d83a50;
+            --completed-bg: #1f4068;
+        }
+
+        /* === Global Styles === */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s, color 0.3s; line-height: 1.6; }
+        
+        /* === Layout === */
+        .header { background-color: var(--header-bg); color: var(--header-text); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .theme-toggle { background: transparent; border: 1px solid var(--header-text); color: var(--header-text); padding: 0.5rem 1rem; cursor: pointer; border-radius: 4px; transition: 0.3s; }
+        .theme-toggle:hover { background: var(--header-text); color: var(--header-bg); }
+        
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; display: grid; grid-template-columns: 300px 1fr; gap: 2rem; }
+        
+        /* === Forms & Controls === */
+        .panel { background-color: var(--card-bg); padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid var(--border-color); height: fit-content; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem; }
+        input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 4px; background-color: var(--bg-color); color: var(--text-color); }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary-color); }
+        
+        .btn { width: 100%; padding: 0.75rem; background-color: var(--primary-color); color: #fff; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; transition: background 0.3s; margin-top: 0.5rem; }
+        .btn:hover { background-color: var(--primary-hover); }
+        
+        .controls { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .controls input, .controls select { flex: 1; min-width: 200px; }
+
+        /* === Task List === */
+        .task-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+        .task-card { background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: 0.3s; display: flex; flex-direction: column; }
+        .task-card.completed { background-color: var(--completed-bg); opacity: 0.8; }
+        .task-card.completed .task-title { text-decoration: line-through; color: #7f8c8d; }
+        
+        .task-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+        .task-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 0.5rem; word-break: break-word; }
+        .task-desc { font-size: 0.95rem; margin-bottom: 1rem; flex-grow: 1; word-break: break-word; }
+        
+        .badges { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .badge { padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: bold; color: white; }
+        .badge-cat { background-color: #8e44ad; }
+        .badge-low { background-color: var(--success-color); }
+        .badge-medium { background-color: var(--warning-color); }
+        .badge-high { background-color: var(--danger-color); }
+
+        .task-actions { display: flex; gap: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem; }
+        .btn-small { flex: 1; padding: 0.5rem; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; font-size: 0.85rem;}
+        .btn-complete { background-color: var(--success-color); }
+        .btn-edit { background-color: var(--warning-color); }
+        .btn-delete { background-color: var(--danger-color); }
+
+        /* === Notifications & Errors === */
+        .notification-container { position: fixed; bottom: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+        .toast { padding: 1rem 1.5rem; border-radius: 4px; color: white; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2); animation: slideIn 0.3s ease-out forwards; max-width: 350px; }
+        .toast.high-priority { background-color: var(--danger-color); }
+        .toast.error { background-color: var(--warning-color); }
+        
+        .error-msg { color: var(--danger-color); font-size: 0.85rem; margin-top: 0.25rem; display: none; }
+
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { to { opacity: 0; transform: translateY(10px); } }
+
+        /* === Responsive === */
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; }
+            .header { flex-direction: column; gap: 1rem; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <h1>TaskMaster Pro</h1>
+        <button class="theme-toggle" id="themeToggle">Toggle Dark Mode</button>
+    </header>
+
+    <div class="container">
+        <!-- Sidebar: Add/Edit Form -->
+        <aside class="panel">
+            <h2 id="formTitle">Add New Task</h2>
+            <form id="taskForm">
+                <input type="hidden" id="taskId">
+                
+                <div class="form-group">
+                    <label for="title">Task Title</label>
+                    <input type="text" id="title" placeholder="e.g., Complete Assignment 4">
+                    <div class="error-msg" id="titleError">Title is required.</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" rows="3" placeholder="Task details..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="priority">Priority</label>
+                    <select id="priority">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    <select id="category">
+                        <option value="Personal">Personal</option>
+                        <option value="Work">Work</option>
+                        <option value="Urgent">Urgent</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn" id="submitBtn">Save Task</button>
+                <button type="button" class="btn" id="cancelBtn" style="background-color: #7f8c8d; display: none;">Cancel Edit</button>
+            </form>
+        </aside>
+
+        <!-- Main Content: Controls & Task List -->
+        <main>
+            <div class="controls">
+                <input type="text" id="searchInput" placeholder="Search by title or description...">
+                <select id="filterCategory">
+                    <option value="all">All Categories</option>
+                    <option value="Personal">Personal</option>
+                    <option value="Work">Work</option>
+                    <option value="Urgent">Urgent</option>
+                </select>
+            </div>
+
+            <div class="task-list" id="taskList">
+                <!-- Tasks will be dynamically injected here by JavaScript -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Container for dynamic notifications -->
+    <div class="notification-container" id="notificationContainer"></div>
+
+    <script>
+        /**
+         * 1. OBJECT-ORIENTED DESIGN: Task Class
+         * Represents an individual task.
+         */
+        class Task {
+            constructor(id, title, description, priority, category, completed = false) {
+                this.id = id;
+                this.title = title;
+                this.description = description;
+                this.priority = priority;
+                this.category = category;
+                this.completed = completed;
+            }
+        }
+
+        /**
+         * 2. OBJECT-ORIENTED DESIGN: TaskManager Class
+         * Handles data logic, CRUD operations, and LocalStorage persistence.
+         */
+        class TaskManager {
+            constructor() {
+                this.tasks = this.loadTasks();
+            }
+
+            loadTasks() {
+                const storedTasks = localStorage.getItem('tasks');
+                return storedTasks ? JSON.parse(storedTasks) : [];
+            }
+
+            saveTasks() {
+                localStorage.setItem('tasks', JSON.stringify(this.tasks));
+            }
+
+            addTask(task) {
+                this.tasks.push(task);
+                this.saveTasks();
+            }
+
+            updateTask(updatedTask) {
+                const index = this.tasks.findIndex(t => t.id === updatedTask.id);
+                if (index !== -1) {
+                    this.tasks[index] = updatedTask;
+                    this.saveTasks();
+                }
+            }
+
+            deleteTask(id) {
+                this.tasks = this.tasks.filter(t => t.id !== id);
+                this.saveTasks();
+            }
+
+            toggleComplete(id) {
+                const task = this.tasks.find(t => t.id === id);
+                if (task) {
+                    task.completed = !task.completed;
+                    this.saveTasks();
+                }
+                return task;
+            }
+
+            getTaskById(id) {
+                return this.tasks.find(t => t.id === id);
+            }
+
+            // Handles both searching and categorizing logic
+            getFilteredTasks(searchTerm = '', categoryFilter = 'all') {
+                return this.tasks.filter(task => {
+                    const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                          task.description.toLowerCase().includes(searchTerm.toLowerCase());
+                    const matchesCategory = categoryFilter === 'all' || task.category === categoryFilter;
+                    return matchesSearch && matchesCategory;
+                }).sort((a, b) => {
+                    // Sort by priority logic (High > Medium > Low)
+                    const priorityWeight = { high: 3, medium: 2, low: 1 };
+                    return priorityWeight[b.priority] - priorityWeight[a.priority];
+                });
+            }
+        }
+
+        /**
+         * 3. OBJECT-ORIENTED DESIGN: UI Class
+         * Handles all DOM manipulation, form handling, and event listening.
+         */
+        class UI {
+            constructor(taskManager) {
+                this.taskManager = taskManager;
+                
+                // Cache DOM elements
+                this.taskListEl = document.getElementById('taskList');
+                this.taskForm = document.getElementById('taskForm');
+                this.titleInput = document.getElementById('title');
+                this.descInput = document.getElementById('description');
+                this.priorityInput = document.getElementById('priority');
+                this.categoryInput = document.getElementById('category');
+                this.taskIdInput = document.getElementById('taskId');
+                this.submitBtn = document.getElementById('submitBtn');
+                this.cancelBtn = document.getElementById('cancelBtn');
+                this.formTitle = document.getElementById('formTitle');
+                this.searchInput = document.getElementById('searchInput');
+                this.filterCategory = document.getElementById('filterCategory');
+                this.themeToggle = document.getElementById('themeToggle');
+                this.notificationContainer = document.getElementById('notificationContainer');
+
+                this.initializeEventListeners();
+                this.loadTheme();
+                this.renderTasks();
+            }
+
+            initializeEventListeners() {
+                // Form Submission
+                this.taskForm.addEventListener('submit', (e) => this.handleFormSubmit(e));
+                
+                // Cancel Edit
+                this.cancelBtn.addEventListener('click', () => this.resetForm());
+
+                // Task Actions (Event Delegation)
+                this.taskListEl.addEventListener('click', (e) => this.handleTaskActions(e));
+
+                // Search and Filter
+                this.searchInput.addEventListener('input', () => this.renderTasks());
+                this.filterCategory.addEventListener('change', () => this.renderTasks());
+
+                // Theme Toggle
+                this.themeToggle.addEventListener('click', () => this.toggleTheme());
+            }
+
+            handleFormSubmit(e) {
+                e.preventDefault();
+                
+                const title = this.titleInput.value.trim();
+                const description = this.descInput.value.trim();
+                const priority = this.priorityInput.value;
+                const category = this.categoryInput.value;
+                const id = this.taskIdInput.value;
+
+                // Validation requirement
+                if (!title) {
+                    document.getElementById('titleError').style.display = 'block';
+                    return;
+                }
+                document.getElementById('titleError').style.display = 'none';
+
+                if (id) {
+                    // Update existing task
+                    const existingTask = this.taskManager.getTaskById(id);
+                    const updatedTask = new Task(id, title, description, priority, category, existingTask.completed);
+                    this.taskManager.updateTask(updatedTask);
+                    this.checkPriorityNotification(updatedTask, 'updated');
+                } else {
+                    // Create new task
+                    const newId = Date.now().toString();
+                    const newTask = new Task(newId, title, description, priority, category);
+                    this.taskManager.addTask(newTask);
+                    this.checkPriorityNotification(newTask, 'added');
+                }
+
+                this.resetForm();
+                this.renderTasks();
+            }
+
+            handleTaskActions(e) {
+                // Ensure we get the button element even if an inner icon/span was clicked
+                const target = e.target.closest('button');
+                if (!target) return;
+
+                const taskId = target.dataset.id;
+
+                if (target.classList.contains('btn-delete')) {
+                    this.taskManager.deleteTask(taskId);
+                    this.renderTasks();
+                } else if (target.classList.contains('btn-edit')) {
+                    this.fillFormForEdit(taskId);
+                } else if (target.classList.contains('btn-complete')) {
+                    const task = this.taskManager.toggleComplete(taskId);
+                    if (task.completed) {
+                        this.checkPriorityNotification(task, 'completed');
+                    }
+                    this.renderTasks();
+                }
+            }
+
+            fillFormForEdit(id) {
+                const task = this.taskManager.getTaskById(id);
+                if (task) {
+                    this.titleInput.value = task.title;
+                    this.descInput.value = task.description;
+                    this.priorityInput.value = task.priority;
+                    this.categoryInput.value = task.category;
+                    this.taskIdInput.value = task.id;
+
+                    this.formTitle.innerText = "Edit Task";
+                    this.submitBtn.innerText = "Update Task";
+                    this.cancelBtn.style.display = "block";
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }
+
+            resetForm() {
+                this.taskForm.reset();
+                this.taskIdInput.value = "";
+                this.formTitle.innerText = "Add New Task";
+                this.submitBtn.innerText = "Save Task";
+                this.cancelBtn.style.display = "none";
+                document.getElementById('titleError').style.display = 'none';
+            }
+
+            renderTasks() {
+                const searchTerm = this.searchInput.value;
+                const filter = this.filterCategory.value;
+                const tasksToRender = this.taskManager.getFilteredTasks(searchTerm, filter);
+
+                this.taskListEl.innerHTML = '';
+
+                if (tasksToRender.length === 0) {
+                    this.taskListEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #7f8c8d;">No tasks found. Add a new task to get started!</p>`;
+                    return;
+                }
+
+                tasksToRender.forEach(task => {
+                    const card = document.createElement('div');
+                    card.className = `task-card ${task.completed ? 'completed' : ''}`;
+                    
+                    card.innerHTML = `
+                        <div class="badges">
+                            <span class="badge badge-cat">${task.category}</span>
+                            <span class="badge badge-${task.priority}">${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}</span>
+                        </div>
+                        <div class="task-title">${task.title}</div>
+                        <div class="task-desc">${task.description}</div>
+                        
+                        <div class="task-actions">
+                            <button class="btn-small btn-complete" data-id="${task.id}">
+                                ${task.completed ? 'Undo' : 'Complete'}
+                            </button>
+                            <button class="btn-small btn-edit" data-id="${task.id}">Edit</button>
+                            <button class="btn-small btn-delete" data-id="${task.id}">Delete</button>
+                        </div>
+                    `;
+                    this.taskListEl.appendChild(card);
+                });
+            }
+
+            // Notifications Requirement
+            checkPriorityNotification(task, action) {
+                if (task.priority === 'high') {
+                    this.showNotification(`High Priority Task: "${task.title}" was ${action}.`, 'high-priority');
+                }
+            }
+
+            showNotification(message, type) {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.innerText = message;
+                
+                this.notificationContainer.appendChild(toast);
+
+                // Disappear after 4 seconds (Requirement: 3-5 seconds)
+                setTimeout(() => {
+                    toast.style.animation = 'fadeOut 0.3s ease-out forwards';
+                    setTimeout(() => toast.remove(), 300);
+                }, 4000);
+            }
+
+            // Theme Toggle Requirement
+            toggleTheme() {
+                const htmlEl = document.documentElement;
+                const currentTheme = htmlEl.getAttribute('data-theme');
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                
+                htmlEl.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+            }
+
+            loadTheme() {
+                const savedTheme = localStorage.getItem('theme') || 'light';
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        }
+
+        /**
+         * 4. INITIALIZATION
+         * Start the application once the DOM is fully loaded.
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            const taskManager = new TaskManager();
+            const ui = new UI(taskManager);
+        });
+
+    </script>
+</body>
+</html>
